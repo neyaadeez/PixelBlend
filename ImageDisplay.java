@@ -63,32 +63,56 @@ public class ImageDisplay {
     public BufferedImage zoom(BufferedImage bufimg, double zoomFactor){
         int temp[][][] = new int[width][height][3];
         BufferedImage rbuf = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-        
-        for(int y=0; y<height; y++){
-            for(int x=0; x<width; x++){
-                int originX = (int) ((x - width / 2) / zoomFactor + width / 2);
-                int originY = (int) ((y - height / 2) / zoomFactor + height / 2);
-				if(originX < width && originX >= 0 && originY < height && originY >= 0){
-					int rgb = bufimg.getRGB(originX, originY);
-					int red = (rgb >> 16) & 0xFF;     // Shift 16 bits to the right for red
-					int green = (rgb >> 8) & 0xFF;    // Shift 8 bits to the right for green
-					int blue = rgb & 0xFF;  
-					temp[x][y][0] = red;
-					temp[x][y][1] = green;
-					temp[x][y][2] = blue;
-				}
-            }
-        }
+		int newHeight = height;
+		int newWidth = width;
+		if(zoomFactor < 1){
+			newWidth = (int) (width * zoomFactor);
+        	newHeight = (int) (height * zoomFactor);
+			for(int y=0; y<newHeight; y++){
+				for(int x=0; x<newWidth; x++){
+					// pixels average range
+					int startX = (int) (x / zoomFactor);
+					int endX = (int) (((x + 1) / zoomFactor));
+					int startY = (int) (y / zoomFactor);
+					int endY = (int) (((y + 1) / zoomFactor));
 
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                int r = temp[x][y][0];
-                int g = temp[x][y][1];
-                int b = temp[x][y][2];
-                int pixelValue = (255 << 24) | (r << 16) | (g << 8) | b;
-                rbuf.setRGB(x, y, pixelValue);
-            }
-        }
+					int totalRed = 0;
+					int totalGreen = 0;
+					int totalBlue = 0;
+
+					// pixels average
+					for (int j = startY; j < endY; j++) {
+						for (int i = startX; i < endX; i++) {
+							int originX = Math.min(i, width - 1);
+							int originY = Math.min(j, height - 1);
+							int rgb = bufimg.getRGB(originX, originY);
+							totalRed += (rgb >> 16) & 0xFF;
+							totalGreen += (rgb >> 8) & 0xFF;
+							totalBlue += rgb & 0xFF;
+						}
+					}
+
+					// average RGB values
+					int avgRed = totalRed / ((endX - startX) * (endY - startY));
+					int avgGreen = totalGreen / ((endX - startX) * (endY - startY));
+					int avgBlue = totalBlue / ((endX - startX) * (endY - startY));
+					int pixVal = (255 << 24) | (avgRed << 16) | (avgGreen << 8) | avgBlue;
+					int xCord = (width - newWidth) / 2;
+					int yCord = (height - newHeight) / 2;
+					rbuf.setRGB(x+xCord, y+yCord, pixVal);
+				}
+        	}
+		}
+		else{
+			for(int y=0; y<newHeight; y++){
+				for(int x=0; x<newWidth; x++){
+					int originX = (int) ((x - width / 2) / zoomFactor + width / 2);
+					int originY = (int) ((y - height / 2) / zoomFactor + height / 2);
+					int rgb = bufimg.getRGB(originX, originY);
+					rbuf.setRGB(x, y, rgb);
+				}
+        	}
+		}
 
         return rbuf;
     }
