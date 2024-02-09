@@ -8,7 +8,7 @@ public class ImageDisplay {
 
 	JFrame frame;
 	JLabel lbIm1;
-	BufferedImage imgOne;
+	int[][][] imgOne;
 
 	// Modify the height and width values here to read and display an image with
   	// different dimensions. 
@@ -18,7 +18,7 @@ public class ImageDisplay {
 	/** Read Image RGB
 	 *  Reads the image of given width and height at the given imgPath into the provided BufferedImage.
 	 */
-	private void readImageRGB(int width, int height, String imgPath, BufferedImage img)
+	private void readImageRGB(int width, int height, String imgPath)
 	{
 		try
 		{
@@ -34,21 +34,15 @@ public class ImageDisplay {
 			raf.read(bytes);
 
 			int ind = 0;
-			for(int y = 0; y < height; y++)
-			{
-				for(int x = 0; x < width; x++)
-				{
-					byte a = 0;
-					byte r = bytes[ind];
-					byte g = bytes[ind+height*width];
-					byte b = bytes[ind+height*width*2]; 
-
-					int pix = 0xff000000 | ((r & 0xff) << 16) | ((g & 0xff) << 8) | (b & 0xff);
-					//int pix = ((a << 24) + (r << 16) + (g << 8) + b);
-					img.setRGB(x,y,pix);
-					ind++;
-				}
-			}
+            imgOne = new int[width][height][3];
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    imgOne[x][y][0] = bytes[ind] & 0xFF; // Red
+                    imgOne[x][y][1] = bytes[ind + height * width] & 0xFF; // Green
+                    imgOne[x][y][2] = bytes[ind + height * width * 2] & 0xFF; // Blue
+                    ind++;
+                }
+            }
 		}
 		catch (FileNotFoundException e) 
 		{
@@ -60,7 +54,7 @@ public class ImageDisplay {
 		}
 	}
 
-    public BufferedImage zoom(BufferedImage bufimg, double zoomFactor){
+    public BufferedImage zoom(double zoomFactor, double angle){
         int temp[][][] = new int[width][height][3];
         BufferedImage rbuf = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 		int newHeight = height;
@@ -85,10 +79,12 @@ public class ImageDisplay {
 						for (int i = startX; i < endX; i++) {
 							int originX = Math.min(i, width - 1);
 							int originY = Math.min(j, height - 1);
-							int rgb = bufimg.getRGB(originX, originY);
-							totalRed += (rgb >> 16) & 0xFF;
-							totalGreen += (rgb >> 8) & 0xFF;
-							totalBlue += rgb & 0xFF;
+							int r = imgOne[originX][originY][0];
+							int g = imgOne[originX][originY][1];
+							int b = imgOne[originX][originY][2];
+							totalRed += r;
+							totalGreen += g;
+							totalBlue += b;
 						}
 					}
 
@@ -108,8 +104,16 @@ public class ImageDisplay {
 				for(int x=0; x<newWidth; x++){
 					int originX = (int) ((x - width / 2) / zoomFactor + width / 2);
 					int originY = (int) ((y - height / 2) / zoomFactor + height / 2);
-					int rgb = bufimg.getRGB(originX, originY);
-					rbuf.setRGB(x, y, rgb);
+					double radians = Math.toRadians(angle);
+                	int rotatedX = (int) (Math.cos(radians) * (originX - width / 2) - Math.sin(radians) * (originY - height / 2) + width / 2);
+                	int rotatedY = (int) (Math.sin(radians) * (originX - width / 2) + Math.cos(radians) * (originY - height / 2) + height / 2);
+
+					int r = imgOne[originX][originY][0];
+					int g = imgOne[originX][originY][1];
+					int b = imgOne[originX][originY][2];
+					int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
+					if (rotatedX >= 0 && rotatedX < width && rotatedY >= 0 && rotatedY < height)
+						rbuf.setRGB(rotatedX, rotatedY, pixVal);
 				}
         	}
 		}
@@ -120,15 +124,14 @@ public class ImageDisplay {
 	public void showIms(String[] args){
 
 		// Read in the specified image
-		imgOne = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-		readImageRGB(width, height, args[0], imgOne);
+		readImageRGB(width, height, args[0]);
 
 		// Use label to display the image
 		frame = new JFrame();
 		GridBagLayout gLayout = new GridBagLayout();
 		frame.getContentPane().setLayout(gLayout);
 
-        BufferedImage im1 = zoom(imgOne, Double.parseDouble(args[1]));
+        BufferedImage im1 = zoom(Double.parseDouble(args[1]), Double.parseDouble(args[2]));
 
 		lbIm1 = new JLabel(new ImageIcon(im1));
 
