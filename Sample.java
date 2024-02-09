@@ -143,6 +143,60 @@ public class Sample {
         return bufferedImage;
     }
 
+    public static BufferedImage zoom(BufferedImage bufimg, double zoomFactor) {
+        int width = bufimg.getWidth();
+        int height = bufimg.getHeight();
+
+        // Calculate the dimensions of the zoomed-out image
+        int newWidth = (int) (width / zoomFactor);
+        int newHeight = (int) (height / zoomFactor);
+
+        BufferedImage rbuf = new BufferedImage(newWidth, newHeight, BufferedImage.TYPE_INT_RGB);
+
+        // Iterate over each pixel in the zoomed-out image
+        for (int y = 0; y < newHeight; y++) {
+            for (int x = 0; x < newWidth; x++) {
+                // Calculate the range of pixels to average
+                int startX = (int) (x * zoomFactor);
+                int endX = (int) ((x + 1) * zoomFactor);
+                int startY = (int) (y * zoomFactor);
+                int endY = (int) ((y + 1) * zoomFactor);
+
+                // Initialize variables to accumulate RGB values
+                int totalRed = 0;
+                int totalGreen = 0;
+                int totalBlue = 0;
+
+                // Iterate over the pixels to average
+                for (int j = startY; j < endY; j++) {
+                    for (int i = startX; i < endX; i++) {
+                        // Ensure i and j are within the bounds of the original image
+                        int originX = Math.min(Math.max(i, 0), width - 1);
+                        int originY = Math.min(Math.max(j, 0), height - 1);
+
+                        int rgb = bufimg.getRGB(originX, originY);
+                        totalRed += (rgb >> 16) & 0xFF;
+                        totalGreen += (rgb >> 8) & 0xFF;
+                        totalBlue += rgb & 0xFF;
+                    }
+                }
+
+                // Calculate the average RGB values
+                int avgRed = totalRed / (int) (zoomFactor * zoomFactor);
+                int avgGreen = totalGreen / (int) (zoomFactor * zoomFactor);
+                int avgBlue = totalBlue / (int) (zoomFactor * zoomFactor);
+
+                // Combine the averaged RGB values into a single pixel value
+                int pixelValue = (255 << 24) | (avgRed << 16) | (avgGreen << 8) | avgBlue;
+
+                // Set the pixel value in the zoomed-out image
+                rbuf.setRGB(x, y, pixelValue);
+            }
+        }
+
+        return rbuf;
+    }
+
     public static void main(String[] args) {
         Sample ren = new Sample();
         ren.showIms(args);
