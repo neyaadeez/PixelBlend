@@ -13,6 +13,7 @@ public class ImageDisplay {
 	int[][][] imgOne;
 	double zoomFactor=1;
 	double rotationFactor=0.0;
+	int counter = 0;
 
 	// Modify the height and width values here to read and display an image with
   	// different dimensions. 
@@ -69,17 +70,16 @@ public class ImageDisplay {
 			for(int y=0; y<newHeight; y++){
 				for(int x=0; x<newWidth; x++){
 					// pixels average range
-					int startX = Math.max((int) (x / zoomFactor) - 1, 0);
-					int endX = Math.min((int) (x / zoomFactor) + 1, width - 1);
-					int startY = Math.max((int) (y / zoomFactor) - 1, 0);
-					int endY = Math.min((int) (y / zoomFactor) + 1, height - 1);
-// System.out.println(startX +"startX"+"::::endX"+endX);
+					int startX = Math.max(0, (int)(x / zoomFactor - 1));
+					int startY = Math.max(0, (int)(y / zoomFactor - 1));
+					int endX = Math.min(width - 1, startX + 3);
+					int endY = Math.min(height - 1, startY + 3);
 
-// System.out.println(startY +"startY"+"::::endY"+endY);
 					
 					int totalRed = 0;
 					int totalGreen = 0;
 					int totalBlue = 0;
+					int pixelsTotal = 0;
 
 					// pixels average
 					for (int j = startY; j < endY; j++) {
@@ -92,14 +92,14 @@ public class ImageDisplay {
 							totalRed += r;
 							totalGreen += g;
 							totalBlue += b;
+							pixelsTotal+=1;
 						}
 					}
 
 					// average RGB values
-					int avgRed = totalRed / ((endX - startX) * (endY - startY));
-					int avgGreen = totalGreen / ((endX - startX) * (endY - startY));
-					int avgBlue = totalBlue / ((endX - startX) * (endY - startY));
-					int pixVal = (255 << 24) | (avgRed << 16) | (avgGreen << 8) | avgBlue;
+					int avgRed = totalRed / pixelsTotal;
+					int avgGreen = totalGreen / pixelsTotal;
+					int avgBlue = totalBlue / pixelsTotal;
 					int xCord = (width - newWidth) / 2;
 					int yCord = (height - newHeight) / 2;
 					temp[x+xCord][y+yCord][0] = avgRed;
@@ -153,18 +153,19 @@ public class ImageDisplay {
 		frame = new JFrame();
 		GridBagLayout gLayout = new GridBagLayout();
 		frame.getContentPane().setLayout(gLayout);
-		double zoomF = Double.parseDouble(args[1]);
+		double zoomF = Double.parseDouble(args[1])-1;
 		double rotation = Double.parseDouble(args[2]);
 		int fps = Integer.parseInt(args[3]);
-		
 
-        BufferedImage im1 = zoom(Double.parseDouble(args[1]), Double.parseDouble(args[2]));
+        BufferedImage im1 = zoom(zoomFactor, rotationFactor);
 
 		lbIm1 = new JLabel(new ImageIcon(im1));
-		Timer timer = new Timer(fps, new ActionListener() {
+		Timer timer = new Timer(1000, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                zoomFactor *= zoomF;
+				counter+=1;
+                zoomFactor = 1 + (counter * zoomF);
+				System.out.println("At "+counter+" Second: "+zoomFactor);
                 rotationFactor += rotation;
 
                 lbIm1.setIcon(new ImageIcon(zoom(zoomFactor, rotationFactor)));
