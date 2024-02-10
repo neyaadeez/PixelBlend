@@ -2,6 +2,8 @@ import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
 import javax.swing.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 
 public class ImageDisplay {
@@ -9,6 +11,8 @@ public class ImageDisplay {
 	JFrame frame;
 	JLabel lbIm1;
 	int[][][] imgOne;
+	double zoomFactor=1;
+	double rotationFactor=0.0;
 
 	// Modify the height and width values here to read and display an image with
   	// different dimensions. 
@@ -65,11 +69,14 @@ public class ImageDisplay {
 			for(int y=0; y<newHeight; y++){
 				for(int x=0; x<newWidth; x++){
 					// pixels average range
-					int startX = (int) (x / zoomFactor);
-					int endX = (int) (((x + 1) / zoomFactor));
-					int startY = (int) (y / zoomFactor);
-					int endY = (int) (((y + 1) / zoomFactor));
+					int startX = Math.max((int) (x / zoomFactor) - 1, 0);
+					int endX = Math.min((int) (x / zoomFactor) + 1, width - 1);
+					int startY = Math.max((int) (y / zoomFactor) - 1, 0);
+					int endY = Math.min((int) (y / zoomFactor) + 1, height - 1);
+// System.out.println(startX +"startX"+"::::endX"+endX);
 
+// System.out.println(startY +"startY"+"::::endY"+endY);
+					
 					int totalRed = 0;
 					int totalGreen = 0;
 					int totalBlue = 0;
@@ -95,7 +102,23 @@ public class ImageDisplay {
 					int pixVal = (255 << 24) | (avgRed << 16) | (avgGreen << 8) | avgBlue;
 					int xCord = (width - newWidth) / 2;
 					int yCord = (height - newHeight) / 2;
-					rbuf.setRGB(x+xCord, y+yCord, pixVal);
+					temp[x+xCord][y+yCord][0] = avgRed;
+					temp[x+xCord][y+yCord][1] = avgGreen;
+					temp[x+xCord][y+yCord][2] = avgBlue;
+				}
+        	}
+			for(int y=0; y<height; y++){
+				for(int x=0; x<width; x++){
+					double radians = Math.toRadians(angle);
+                	int rotatedX = (int) (Math.cos(radians) * (x - width / 2) - Math.sin(radians) * (y - height / 2) + width / 2);
+                	int rotatedY = (int) (Math.sin(radians) * (x - width / 2) + Math.cos(radians) * (y - height / 2) + height / 2);
+					if (rotatedX >= 0 && rotatedX < width && rotatedY >= 0 && rotatedY < height){
+						int r = temp[rotatedX][rotatedY][0];
+						int g = temp[rotatedX][rotatedY][1];
+						int b = temp[rotatedX][rotatedY][2];
+						int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
+						rbuf.setRGB(x, y, pixVal);
+					}
 				}
         	}
 		}
@@ -107,13 +130,13 @@ public class ImageDisplay {
 					double radians = Math.toRadians(angle);
                 	int rotatedX = (int) (Math.cos(radians) * (originX - width / 2) - Math.sin(radians) * (originY - height / 2) + width / 2);
                 	int rotatedY = (int) (Math.sin(radians) * (originX - width / 2) + Math.cos(radians) * (originY - height / 2) + height / 2);
-
-					int r = imgOne[originX][originY][0];
-					int g = imgOne[originX][originY][1];
-					int b = imgOne[originX][originY][2];
-					int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
-					if (rotatedX >= 0 && rotatedX < width && rotatedY >= 0 && rotatedY < height)
-						rbuf.setRGB(rotatedX, rotatedY, pixVal);
+					if (rotatedX >= 0 && rotatedX < width && rotatedY >= 0 && rotatedY < height){
+						int r = imgOne[rotatedX][rotatedY][0];
+						int g = imgOne[rotatedX][rotatedY][1];
+						int b = imgOne[rotatedX][rotatedY][2];
+						int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
+						rbuf.setRGB(x, y, pixVal);
+					}
 				}
         	}
 		}
@@ -130,10 +153,28 @@ public class ImageDisplay {
 		frame = new JFrame();
 		GridBagLayout gLayout = new GridBagLayout();
 		frame.getContentPane().setLayout(gLayout);
+		double zoomF = Double.parseDouble(args[1]);
+		double rotation = Double.parseDouble(args[2]);
+		int fps = Integer.parseInt(args[3]);
+		
 
         BufferedImage im1 = zoom(Double.parseDouble(args[1]), Double.parseDouble(args[2]));
 
 		lbIm1 = new JLabel(new ImageIcon(im1));
+		Timer timer = new Timer(fps, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                zoomFactor *= zoomF;
+                rotationFactor += rotation;
+
+                lbIm1.setIcon(new ImageIcon(zoom(zoomFactor, rotationFactor)));
+
+                frame.revalidate();
+                frame.repaint();
+            }
+        });
+
+        timer.start();
 
 		GridBagConstraints c = new GridBagConstraints();
 		c.fill = GridBagConstraints.HORIZONTAL;

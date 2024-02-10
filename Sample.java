@@ -114,8 +114,6 @@ public class Sample {
                 // Apply zoom and rotation transformations
                 int originalX = (int) ((x - width / 2) / zoomFactor + width / 2);
                 int originalY = (int) ((y - height / 2) / zoomFactor + height / 2);
-                System.out.println(originalX +"---"+ originalY);
-
                 double radians = Math.toRadians(rotationAngle);
                 int rotatedX = (int) (Math.cos(radians) * (originalX - width / 2) - Math.sin(radians) * (originalY - height / 2) + width / 2);
                 int rotatedY = (int) (Math.sin(radians) * (originalX - width / 2) + Math.cos(radians) * (originalY - height / 2) + height / 2);
