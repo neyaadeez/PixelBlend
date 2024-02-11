@@ -50,13 +50,6 @@ public class ImageDisplay {
         }
     }
 
-	private BufferedImage deepCopy(BufferedImage original) {
-		BufferedImage copy = new BufferedImage(original.getWidth(), original.getHeight(), original.getType());
-		Graphics g = copy.getGraphics();
-		g.drawImage(original, 0, 0, null);
-		g.dispose();
-		return copy;
-	}
 	/** Read Image RGB
 	 *  Reads the image of given width and height at the given imgPath into the provided BufferedImage.
 	 */
@@ -188,8 +181,6 @@ public class ImageDisplay {
 			// zoomSequence[i] = zoomCalcFactor*k;
 			// rotationSequence[i] = rotataionCalcFactor*k;
 			// k+=1;
-			BufferedImage rbufCopy = deepCopy(rbuf[processId]); // Create a copy of rbuf
-			rbuf[processId] = rbufCopy;
 			framesArray[i] = zoom(prevZoomVal+zoomCalcFactor*k, ((rotataionCalcFactor*k)+prevRotateVal), processId);
 			k+=1;
 		}
@@ -256,7 +247,7 @@ public class ImageDisplay {
 		lbIm1 = new JLabel(new ImageIcon(im1));
 		MultiTFrames();
 		
-		Timer timer = new Timer(1000, new ActionListener() {
+		Timer timer = new Timer(10000, new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				//framesResult = frames(zoomFactor, rotationFactor, fps);
@@ -269,7 +260,7 @@ public class ImageDisplay {
 				// Display each frame separately with a delay
 				for (int i = 0; i < fps; i++) {
 					final int index = i; // Final variable for use in the ActionListener
-					Timer frameTimer = new Timer(i * 1000 / fps, new ActionListener() {
+					Timer frameTimer = new Timer(i * 10000 / fps, new ActionListener() {
 						@Override
 						public void actionPerformed(ActionEvent e) {
 							lbIm1.setIcon(new ImageIcon(framesResult[index]));
@@ -283,11 +274,11 @@ public class ImageDisplay {
 			}
 		});
 		
-		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
-        executor.scheduleAtFixedRate(() -> {
-                MultiTFrames();
-				System.gc();
-        }, 0, 2, TimeUnit.SECONDS);
+		// ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+        // executor.scheduleAtFixedRate(() -> {
+        //         MultiTFrames();
+		// 		System.gc();
+        // }, 0, 10, TimeUnit.SECONDS);
 		timer.start();
 
 		GridBagConstraints c = new GridBagConstraints();
