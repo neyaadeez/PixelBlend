@@ -15,6 +15,8 @@ public class ImageDisplay {
 	double rotationFactor=0.0;
 	int counter = 0;
 	BufferedImage[] framesResult;
+	double prevZoomVal = 1;
+	double prevRotateVal = 0;
 
 	// Modify the height and width values here to read and display an image with
   	// different dimensions. 
@@ -146,18 +148,20 @@ public class ImageDisplay {
     }
 	
 	public BufferedImage[] frames(double zoomValue, double rotationValue, int fps){
-		double zoomCalcFactor = (zoomValue-1)/fps;
-		double rotataionCalcFactor = rotationValue/fps;
+		double zoomCalcFactor = (zoomValue-prevZoomVal)/fps;
+		double rotataionCalcFactor = (rotationValue-prevRotateVal)/fps;
 		BufferedImage[] framesArray = new BufferedImage[fps];
 		int k = 0;
 		for(int i=0; i<fps; i++){
 			// zoomSequence[i] = zoomCalcFactor*k;
 			// rotationSequence[i] = rotataionCalcFactor*k;
 			// k+=1;
-			framesArray[i] = zoom(1+zoomCalcFactor*k, rotataionCalcFactor*k);
-			System.out.println(1+zoomCalcFactor*k + ":::::"+ rotataionCalcFactor*k);
+			framesArray[i] = zoom(prevZoomVal+zoomCalcFactor*k, ((rotataionCalcFactor*k)+prevRotateVal));
+			System.out.println(prevZoomVal+zoomCalcFactor*k + ":::::"+ ((rotataionCalcFactor*k)+prevRotateVal));
 			k+=1;
 		}
+		prevZoomVal = zoomValue;
+		prevRotateVal = rotationValue;
 		return framesArray;
 	}
 
@@ -178,27 +182,34 @@ public class ImageDisplay {
         BufferedImage im1 = zoom(zoomFactor, rotationFactor);
 
 		lbIm1 = new JLabel(new ImageIcon(im1));
-		Timer timer = new Timer(10000, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-				counter+=1;
-                zoomFactor = 1 + (counter * zoomF);
-				System.out.println("At "+counter+" Second: "+zoomFactor);
-                rotationFactor += rotation;
+		Timer timer = new Timer(1000, new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				counter++;
+				zoomFactor = 1 + (counter * zoomF);
+				rotationFactor += rotation;
+				System.out.println("At " + counter + " Second: " + zoomFactor +"  rotation: "+rotationFactor);
 				framesResult = frames(zoomFactor, rotationFactor, fps);
-				for(int i=0; i<fps; i++){
-					
-					lbIm1.setIcon(new ImageIcon(framesResult[i]));
-
-					frame.revalidate();
-					frame.repaint();
+				
+				// Display each frame separately with a delay
+				for (int i = 0; i < fps; i++) {
+					final int index = i; // Final variable for use in the ActionListener
+					Timer frameTimer = new Timer(i * 1000 / fps, new ActionListener() {
+						@Override
+						public void actionPerformed(ActionEvent e) {
+							lbIm1.setIcon(new ImageIcon(framesResult[index]));
+							frame.revalidate();
+							frame.repaint();
+						}
+					});
+					frameTimer.setRepeats(false); // Ensure each frame is displayed only once
+					frameTimer.start();
 				}
-                // lbIm1.setIcon(new ImageIcon(zoom(zoomFactor, rotationFactor)));
-
-                // frame.revalidate();
-                // frame.repaint();
-            }
-        });
+			}
+		});
+		
+		timer.start();
+		
 
         timer.start();
 
