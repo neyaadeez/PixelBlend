@@ -17,10 +17,6 @@ public class ImageDisplay {
 
 	JFrame frame;
 	JLabel lbIm1;
-	JLabel q1;
-	JLabel q2;
-	JLabel q3;
-	JLabel q4;
 
 	int[][][] imgOne;
 	float zoomFactor=1;
@@ -33,12 +29,15 @@ public class ImageDisplay {
 	int fps;
 	float zoomF;
 	float rotation;
+	int nThreads = 2;
 	BlockingQueue<ResultWithIndex> franQueue = new LinkedBlockingQueue<>();
 
 	// Modify the height and width values here to read and display an image with
   	// different dimensions. 
 	int width = 512;
 	int height = 512;
+	BufferedImage[] rbuf = new BufferedImage[nThreads];
+	int[][][][] temp = new int[nThreads][width][height][3];
 
 	// Helper class to store result with index
     static class ResultWithIndex {
@@ -51,6 +50,13 @@ public class ImageDisplay {
         }
     }
 
+	private BufferedImage deepCopy(BufferedImage original) {
+		BufferedImage copy = new BufferedImage(original.getWidth(), original.getHeight(), original.getType());
+		Graphics g = copy.getGraphics();
+		g.drawImage(original, 0, 0, null);
+		g.dispose();
+		return copy;
+	}
 	/** Read Image RGB
 	 *  Reads the image of given width and height at the given imgPath into the provided BufferedImage.
 	 */
@@ -90,9 +96,7 @@ public class ImageDisplay {
 		}
 	}
 
-    public BufferedImage zoom(float zoomFactor, float angle){
-		int[][][] temp = new int[width][height][3];
-		BufferedImage rbuf = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+    public BufferedImage zoom(float zoomFactor, float angle, int processId){
         int newHeight = height;
 		int newWidth = width;
 		if(zoomFactor < 1){
@@ -131,9 +135,9 @@ public class ImageDisplay {
 					int avgBlue = totalBlue / pixelsTotal;
 					int xCord = (width - newWidth) / 2;
 					int yCord = (height - newHeight) / 2;
-					temp[x+xCord][y+yCord][0] = avgRed;
-					temp[x+xCord][y+yCord][1] = avgGreen;
-					temp[x+xCord][y+yCord][2] = avgBlue;
+					temp[processId][x+xCord][y+yCord][0] = avgRed;
+					temp[processId][x+xCord][y+yCord][1] = avgGreen;
+					temp[processId][x+xCord][y+yCord][2] = avgBlue;
 				}
         	}
 			for(int y=0; y<height; y++){
@@ -142,12 +146,13 @@ public class ImageDisplay {
                 	int rotatedX = (int) (Math.cos(radians) * (x - width / 2) - Math.sin(radians) * (y - height / 2) + width / 2);
                 	int rotatedY = (int) (Math.sin(radians) * (x - width / 2) + Math.cos(radians) * (y - height / 2) + height / 2);
 					if (rotatedX >= 0 && rotatedX < width && rotatedY >= 0 && rotatedY < height){
-						int r = temp[rotatedX][rotatedY][0];
-						int g = temp[rotatedX][rotatedY][1];
-						int b = temp[rotatedX][rotatedY][2];
+						int r = temp[processId][rotatedX][rotatedY][0];
+						int g = temp[processId][rotatedX][rotatedY][1];
+						int b = temp[processId][rotatedX][rotatedY][2];
 						int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
-						rbuf.setRGB(x, y, pixVal);
-					}
+						rbuf[processId].setRGB(x, y, pixVal);
+					}else
+						rbuf[processId].setRGB(x, y, 0);
 				}
         	}
 		}
@@ -164,16 +169,17 @@ public class ImageDisplay {
 						int g = imgOne[rotatedX][rotatedY][1];
 						int b = imgOne[rotatedX][rotatedY][2];
 						int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
-						rbuf.setRGB(x, y, pixVal);
-					}
+						rbuf[processId].setRGB(x, y, pixVal);
+					}else
+						rbuf[processId].setRGB(x, y, 0xFFFFFF);
 				}
         	}
 		}
 
-        return rbuf;
+        return rbuf[processId];
     }
 	
-	public BufferedImage[] frames(float zoomValue, float rotationValue, int fps, float prevRotateVal, float prevZoomVal){
+	public BufferedImage[] frames(float zoomValue, float rotationValue, int fps, float prevRotateVal, float prevZoomVal, int processId){
 		float zoomCalcFactor = (zoomValue-prevZoomVal)/fps;
 		float rotataionCalcFactor = (rotationValue-prevRotateVal)/fps;
 		BufferedImage[] framesArray = new BufferedImage[fps];
@@ -182,7 +188,9 @@ public class ImageDisplay {
 			// zoomSequence[i] = zoomCalcFactor*k;
 			// rotationSequence[i] = rotataionCalcFactor*k;
 			// k+=1;
-			framesArray[i] = zoom(prevZoomVal+zoomCalcFactor*k, ((rotataionCalcFactor*k)+prevRotateVal));
+			BufferedImage rbufCopy = deepCopy(rbuf[processId]); // Create a copy of rbuf
+			rbuf[processId] = rbufCopy;
+			framesArray[i] = zoom(prevZoomVal+zoomCalcFactor*k, ((rotataionCalcFactor*k)+prevRotateVal), processId);
 			k+=1;
 		}
 		return framesArray;
@@ -190,9 +198,9 @@ public class ImageDisplay {
 
 	public void MultiTFrames(){
 		
-		ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+		ExecutorService executor = Executors.newFixedThreadPool(nThreads);
 
-		for (int i = 0; i < 7; i++) {
+		for (int i = 0; i < nThreads; i++) {
 			prevZoomVal = zoomFactor;
 			prevRotateVal = rotationFactor;
 			counter++;
@@ -203,11 +211,13 @@ public class ImageDisplay {
 			float arg4PreR = prevRotateVal;
 			float arg5PreZ = prevZoomVal;
 			int c = counter;
+			final int index = i;
 			executor.execute(new Runnable() {
 				@Override
 				public void run() {
 					System.out.println("PrevZ: "+arg5PreZ+" PrevR: "+arg4PreR+" Counter: "+c+" ZoomFactor: "+arg1Zoom+" rotationFactor: "+arg2Rotate);
-					BufferedImage[] frame = frames(arg1Zoom, arg2Rotate, fps, arg4PreR, arg5PreZ);
+					BufferedImage[] frame = frames(arg1Zoom, arg2Rotate, fps, arg4PreR, arg5PreZ, index);
+					System.out.println(index);
 					try{
 						franQueue.put(new ResultWithIndex(c, frame));
 					}
@@ -237,8 +247,12 @@ public class ImageDisplay {
 		zoomF = Float.parseFloat(args[1])-1;
 		rotation = Float.parseFloat(args[2]);
 		fps = Integer.parseInt(args[3]);
+		for (int i = 0; i < nThreads; i++) {
+			rbuf[i] = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		}
 
-		BufferedImage im1 = zoom(zoomFactor, rotationFactor);
+		rbuf[1] = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		BufferedImage im1 = zoom(zoomFactor, rotationFactor, 1);
 		lbIm1 = new JLabel(new ImageIcon(im1));
 		MultiTFrames();
 		
@@ -246,6 +260,7 @@ public class ImageDisplay {
 			@Override
 			public void actionPerformed(ActionEvent e) {
 				//framesResult = frames(zoomFactor, rotationFactor, fps);
+
 				timerCounter+=1;
 				
 				ResultWithIndex result = (ResultWithIndex) franQueue.stream().filter(r -> ((ResultWithIndex) r).index == timerCounter).findFirst().orElse(null);
@@ -268,11 +283,12 @@ public class ImageDisplay {
 			}
 		});
 		
-		timer.start();
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
         executor.scheduleAtFixedRate(() -> {
                 MultiTFrames();
-        }, 0, 5, TimeUnit.SECONDS);
+				System.gc();
+        }, 0, 2, TimeUnit.SECONDS);
+		timer.start();
 
 		GridBagConstraints c = new GridBagConstraints();
 		c.fill = GridBagConstraints.HORIZONTAL;
