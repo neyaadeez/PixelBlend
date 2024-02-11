@@ -33,13 +33,23 @@ public class ImageDisplay {
 	int fps;
 	double zoomF;
 	double rotation;
-	BufferedImage[] frameQueue;
-	ConcurrentHashMap<Integer, BufferedImage[]> resultMap = new ConcurrentHashMap<>();
+	BlockingQueue<ResultWithIndex> franQueue = new LinkedBlockingQueue<>();
 
 	// Modify the height and width values here to read and display an image with
   	// different dimensions. 
 	int width = 512;
 	int height = 512;
+
+	// Helper class to store result with index
+    static class ResultWithIndex {
+        int index;
+        BufferedImage[] result;
+
+        public ResultWithIndex(int index, BufferedImage[] result) {
+            this.index = index;
+            this.result = result;
+        }
+    }
 
 	/** Read Image RGB
 	 *  Reads the image of given width and height at the given imgPath into the provided BufferedImage.
@@ -200,7 +210,12 @@ public class ImageDisplay {
 				public void run() {
 					System.out.println("PrevZ: "+arg5PreZ+" PrevR: "+arg4PreR+" Counter: "+c+" ZoomFactor: "+arg1Zoom+" rotationFactor: "+arg2Rotate);
 					BufferedImage[] frame = frames(arg1Zoom, arg2Rotate, fps, arg4PreR, arg5PreZ);
-					resultMap.put(c, frame);
+					try{
+						franQueue.put(new ResultWithIndex(c, frame));
+					}
+					catch(InterruptedException e){
+						e.printStackTrace();
+					}
 				}
 			});
 		}
@@ -234,7 +249,11 @@ public class ImageDisplay {
 			public void actionPerformed(ActionEvent e) {
 				//framesResult = frames(zoomFactor, rotationFactor, fps);
 				timerCounter+=1;
-				framesResult = resultMap.get(timerCounter);
+				
+				ResultWithIndex result = (ResultWithIndex) franQueue.stream().filter(r -> ((ResultWithIndex) r).index == timerCounter).findFirst().orElse(null);
+				framesResult = result.result;
+				
+				
 				// Display each frame separately with a delay
 				for (int i = 0; i < fps; i++) {
 					final int index = i; // Final variable for use in the ActionListener
