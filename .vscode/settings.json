@@ -2,24 +2,24 @@
     "java.configuration.runtimes": [
         {
             "name": "JavaSE-21",
-            "path": "/home/neyaadeez/Documents/USC/Multimedia/ImageDisplay_Java/graalvm-jdk-21.0.2+13.1",
+            "path": "/home/neyaadeez/Documents/USC/graalvm-jdk-21.0.2+13.1",
             "default": true
         }
     ],
-    "graalvm.home": "/home/neyaadeez/Documents/USC/Multimedia/ImageDisplay_Java/graalvm-jdk-21.0.2+13.1",
     "graalvm.installations": [
-        "/home/neyaadeez/Documents/USC/Multimedia/ImageDisplay_Java/graalvm-jdk-21.0.2+13.1"
+        "/home/neyaadeez/Documents/USC/graalvm-jdk-21.0.2+13.1"
     ],
     "terminal.integrated.env.linux": {
-        "GRAALVM_HOME": "/home/neyaadeez/Documents/USC/Multimedia/ImageDisplay_Java/graalvm-jdk-21.0.2+13.1",
-        "JAVA_HOME": "/home/neyaadeez/Documents/USC/Multimedia/ImageDisplay_Java/graalvm-jdk-21.0.2+13.1",
-        "PATH": "/home/neyaadeez/Documents/USC/Multimedia/ImageDisplay_Java/graalvm-jdk-21.0.2+13.1/bin:${env:PATH}"
+        "PATH": "/home/neyaadeez/Documents/USC/graalvm-jdk-21.0.2+13.1/bin:${env:PATH}",
+        "GRAALVM_HOME": "/home/neyaadeez/Documents/USC/graalvm-jdk-21.0.2+13.1",
+        "JAVA_HOME": "/home/neyaadeez/Documents/USC/graalvm-jdk-21.0.2+13.1"
     },
-    "java.home": "/home/neyaadeez/Documents/USC/Multimedia/ImageDisplay_Java/graalvm-jdk-21.0.2+13.1",
     "maven.terminal.customEnv": [
         {
             "environmentVariable": "JAVA_HOME",
-            "value": "/home/neyaadeez/Documents/USC/Multimedia/ImageDisplay_Java/graalvm-jdk-21.0.2+13.1"
+            "value": "/home/neyaadeez/Documents/USC/graalvm-jdk-21.0.2+13.1"
         }
-    ]
+    ],
+    "graalvm.home": "/home/neyaadeez/Documents/USC/graalvm-jdk-21.0.2+13.1",
+    "java.home": "/home/neyaadeez/Documents/USC/graalvm-jdk-21.0.2+13.1"
 }

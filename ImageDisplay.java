@@ -36,6 +36,8 @@ public class ImageDisplay {
   	// different dimensions. 
 	int width = 512;
 	int height = 512;
+	int[][][] temp = new int[width][height][3];
+		BufferedImage rbuf = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 
 	// Helper class to store result with index
     static class ResultWithIndex {
@@ -88,8 +90,6 @@ public class ImageDisplay {
 	}
 
     public BufferedImage zoom(float zoomFactor, float angle){
-		int[][][] temp = new int[width][height][3];
-		BufferedImage rbuf = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         int newHeight = height;
 		int newWidth = width;
 		if(zoomFactor < 1){
@@ -179,7 +179,9 @@ public class ImageDisplay {
 			// zoomSequence[i] = zoomCalcFactor*k;
 			// rotationSequence[i] = rotataionCalcFactor*k;
 			// k+=1;
+			framesArray[i] = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
 			framesArray[i] = zoom(prevZoomVal+zoomCalcFactor*k, ((rotataionCalcFactor*k)+prevRotateVal));
+			
 			k+=1;
 		}
 		return framesArray;
@@ -207,6 +209,7 @@ public class ImageDisplay {
 					BufferedImage[] frame = frames(arg1Zoom, arg2Rotate, fps, arg4PreR, arg5PreZ);
 					try{
 						franQueue.put(new ResultWithIndex(c, frame));
+						frame = null;
 					}
 					catch(InterruptedException e){
 						e.printStackTrace();
@@ -245,6 +248,7 @@ public class ImageDisplay {
 
 				timerCounter+=1;
 				
+				
 				ResultWithIndex result = (ResultWithIndex) franQueue.stream().filter(r -> ((ResultWithIndex) r).index == timerCounter).findFirst().orElse(null);
 				framesResult = result.result;
 				
@@ -269,7 +273,7 @@ public class ImageDisplay {
         executor.scheduleAtFixedRate(() -> {
                 MultiTFrames();
 				System.gc();
-        }, 0, 1, TimeUnit.SECONDS);
+        }, 1, 1, TimeUnit.SECONDS);
 		MultiTFrames();
 		timer.start();
 
