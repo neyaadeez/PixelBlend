@@ -1,6 +1,13 @@
 import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.TimeUnit;
+
 import javax.swing.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -10,13 +17,24 @@ public class ImageDisplay {
 
 	JFrame frame;
 	JLabel lbIm1;
+	JLabel q1;
+	JLabel q2;
+	JLabel q3;
+	JLabel q4;
+
 	int[][][] imgOne;
 	double zoomFactor=1;
 	double rotationFactor=0.0;
 	int counter = 0;
+	int timerCounter = 0;
 	BufferedImage[] framesResult;
 	double prevZoomVal = 1;
 	double prevRotateVal = 0;
+	int fps;
+	double zoomF;
+	double rotation;
+	BufferedImage[] frameQueue;
+	ConcurrentHashMap<Integer, BufferedImage[]> resultMap = new ConcurrentHashMap<>();
 
 	// Modify the height and width values here to read and display an image with
   	// different dimensions. 
@@ -147,7 +165,7 @@ public class ImageDisplay {
         return rbuf;
     }
 	
-	public BufferedImage[] frames(double zoomValue, double rotationValue, int fps){
+	public BufferedImage[] frames(double zoomValue, double rotationValue, int fps, double prevRotateVal, double prevZoomVal){
 		double zoomCalcFactor = (zoomValue-prevZoomVal)/fps;
 		double rotataionCalcFactor = (rotationValue-prevRotateVal)/fps;
 		BufferedImage[] framesArray = new BufferedImage[fps];
@@ -157,12 +175,41 @@ public class ImageDisplay {
 			// rotationSequence[i] = rotataionCalcFactor*k;
 			// k+=1;
 			framesArray[i] = zoom(prevZoomVal+zoomCalcFactor*k, ((rotataionCalcFactor*k)+prevRotateVal));
-			System.out.println(prevZoomVal+zoomCalcFactor*k + ":::::"+ ((rotataionCalcFactor*k)+prevRotateVal));
 			k+=1;
 		}
-		prevZoomVal = zoomValue;
-		prevRotateVal = rotationValue;
 		return framesArray;
+	}
+
+	public void MultiTFrames(){
+		
+		ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+
+		for (int i = 0; i < 5; i++) {
+			prevZoomVal = zoomFactor;
+			prevRotateVal = rotationFactor;
+			counter++;
+			zoomFactor = 1 + (counter * zoomF);
+			rotationFactor += rotation;
+			double arg1Zoom = zoomFactor;
+			double arg2Rotate = rotationFactor;
+			double arg4PreR = prevRotateVal;
+			double arg5PreZ = prevZoomVal;
+			int c = counter;
+			executor.execute(new Runnable() {
+				@Override
+				public void run() {
+					System.out.println("PrevZ: "+arg5PreZ+" PrevR: "+arg4PreR+" Counter: "+c+" ZoomFactor: "+arg1Zoom+" rotationFactor: "+arg2Rotate);
+					BufferedImage[] frame = frames(arg1Zoom, arg2Rotate, fps, arg4PreR, arg5PreZ);
+					resultMap.put(c, frame);
+				}
+			});
+		}
+		executor.shutdown();
+		try {
+			executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+		} catch (InterruptedException ex) {
+			ex.printStackTrace();
+		 }
 	}
 
 	public void showIms(String[] args){
@@ -174,23 +221,20 @@ public class ImageDisplay {
 		frame = new JFrame();
 		GridBagLayout gLayout = new GridBagLayout();
 		frame.getContentPane().setLayout(gLayout);
-		double zoomF = Double.parseDouble(args[1])-1;
-		double rotation = Double.parseDouble(args[2]);
-		int fps = Integer.parseInt(args[3]);
-		framesResult = new BufferedImage[fps];
+		zoomF = Double.parseDouble(args[1])-1;
+		rotation = Double.parseDouble(args[2]);
+		fps = Integer.parseInt(args[3]);
 
-        BufferedImage im1 = zoom(zoomFactor, rotationFactor);
-
+		BufferedImage im1 = zoom(zoomFactor, rotationFactor);
 		lbIm1 = new JLabel(new ImageIcon(im1));
+		MultiTFrames();
+		
 		Timer timer = new Timer(1000, new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				counter++;
-				zoomFactor = 1 + (counter * zoomF);
-				rotationFactor += rotation;
-				System.out.println("At " + counter + " Second: " + zoomFactor +"  rotation: "+rotationFactor);
-				framesResult = frames(zoomFactor, rotationFactor, fps);
-				
+				//framesResult = frames(zoomFactor, rotationFactor, fps);
+				timerCounter+=1;
+				framesResult = resultMap.get(timerCounter);
 				// Display each frame separately with a delay
 				for (int i = 0; i < fps; i++) {
 					final int index = i; // Final variable for use in the ActionListener
@@ -209,9 +253,6 @@ public class ImageDisplay {
 		});
 		
 		timer.start();
-		
-
-        timer.start();
 
 		GridBagConstraints c = new GridBagConstraints();
 		c.fill = GridBagConstraints.HORIZONTAL;
