@@ -14,6 +14,7 @@ public class ImageDisplay {
 	double zoomFactor=1;
 	double rotationFactor=0.0;
 	int counter = 0;
+	BufferedImage[] framesResult;
 
 	// Modify the height and width values here to read and display an image with
   	// different dimensions. 
@@ -143,6 +144,22 @@ public class ImageDisplay {
 
         return rbuf;
     }
+	
+	public BufferedImage[] frames(double zoomValue, double rotationValue, int fps){
+		double zoomCalcFactor = (zoomValue-1)/fps;
+		double rotataionCalcFactor = rotationValue/fps;
+		BufferedImage[] framesArray = new BufferedImage[fps];
+		int k = 0;
+		for(int i=0; i<fps; i++){
+			// zoomSequence[i] = zoomCalcFactor*k;
+			// rotationSequence[i] = rotataionCalcFactor*k;
+			// k+=1;
+			framesArray[i] = zoom(1+zoomCalcFactor*k, rotataionCalcFactor*k);
+			System.out.println(1+zoomCalcFactor*k + ":::::"+ rotataionCalcFactor*k);
+			k+=1;
+		}
+		return framesArray;
+	}
 
 	public void showIms(String[] args){
 
@@ -156,22 +173,30 @@ public class ImageDisplay {
 		double zoomF = Double.parseDouble(args[1])-1;
 		double rotation = Double.parseDouble(args[2]);
 		int fps = Integer.parseInt(args[3]);
+		framesResult = new BufferedImage[fps];
 
         BufferedImage im1 = zoom(zoomFactor, rotationFactor);
 
 		lbIm1 = new JLabel(new ImageIcon(im1));
-		Timer timer = new Timer(1000, new ActionListener() {
+		Timer timer = new Timer(10000, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
 				counter+=1;
                 zoomFactor = 1 + (counter * zoomF);
 				System.out.println("At "+counter+" Second: "+zoomFactor);
                 rotationFactor += rotation;
+				framesResult = frames(zoomFactor, rotationFactor, fps);
+				for(int i=0; i<fps; i++){
+					
+					lbIm1.setIcon(new ImageIcon(framesResult[i]));
 
-                lbIm1.setIcon(new ImageIcon(zoom(zoomFactor, rotationFactor)));
+					frame.revalidate();
+					frame.repaint();
+				}
+                // lbIm1.setIcon(new ImageIcon(zoom(zoomFactor, rotationFactor)));
 
-                frame.revalidate();
-                frame.repaint();
+                // frame.revalidate();
+                // frame.repaint();
             }
         });
 
