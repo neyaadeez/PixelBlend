@@ -2,10 +2,10 @@ import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import javax.swing.*;
@@ -23,16 +23,16 @@ public class ImageDisplay {
 	JLabel q4;
 
 	int[][][] imgOne;
-	double zoomFactor=1;
-	double rotationFactor=0.0;
+	float zoomFactor=1;
+	float rotationFactor=0.0f;
 	int counter = 0;
 	int timerCounter = 0;
 	BufferedImage[] framesResult;
-	double prevZoomVal = 1;
-	double prevRotateVal = 0;
+	float prevZoomVal = 1;
+	float prevRotateVal = 0;
 	int fps;
-	double zoomF;
-	double rotation;
+	float zoomF;
+	float rotation;
 	BlockingQueue<ResultWithIndex> franQueue = new LinkedBlockingQueue<>();
 
 	// Modify the height and width values here to read and display an image with
@@ -90,10 +90,10 @@ public class ImageDisplay {
 		}
 	}
 
-    public BufferedImage zoom(double zoomFactor, double angle){
-        int temp[][][] = new int[width][height][3];
-        BufferedImage rbuf = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-		int newHeight = height;
+    public BufferedImage zoom(float zoomFactor, float angle){
+		int[][][] temp = new int[width][height][3];
+		BufferedImage rbuf = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+        int newHeight = height;
 		int newWidth = width;
 		if(zoomFactor < 1){
 			newWidth = (int) (width * zoomFactor);
@@ -105,8 +105,6 @@ public class ImageDisplay {
 					int startY = Math.max(0, (int)(y / zoomFactor - 1));
 					int endX = Math.min(width - 1, startX + 3);
 					int endY = Math.min(height - 1, startY + 3);
-
-					
 					int totalRed = 0;
 					int totalGreen = 0;
 					int totalBlue = 0;
@@ -140,7 +138,7 @@ public class ImageDisplay {
         	}
 			for(int y=0; y<height; y++){
 				for(int x=0; x<width; x++){
-					double radians = Math.toRadians(angle);
+					float radians = (float)Math.toRadians(angle);
                 	int rotatedX = (int) (Math.cos(radians) * (x - width / 2) - Math.sin(radians) * (y - height / 2) + width / 2);
                 	int rotatedY = (int) (Math.sin(radians) * (x - width / 2) + Math.cos(radians) * (y - height / 2) + height / 2);
 					if (rotatedX >= 0 && rotatedX < width && rotatedY >= 0 && rotatedY < height){
@@ -158,7 +156,7 @@ public class ImageDisplay {
 				for(int x=0; x<newWidth; x++){
 					int originX = (int) ((x - width / 2) / zoomFactor + width / 2);
 					int originY = (int) ((y - height / 2) / zoomFactor + height / 2);
-					double radians = Math.toRadians(angle);
+					float radians = (float)Math.toRadians(angle);
                 	int rotatedX = (int) (Math.cos(radians) * (originX - width / 2) - Math.sin(radians) * (originY - height / 2) + width / 2);
                 	int rotatedY = (int) (Math.sin(radians) * (originX - width / 2) + Math.cos(radians) * (originY - height / 2) + height / 2);
 					if (rotatedX >= 0 && rotatedX < width && rotatedY >= 0 && rotatedY < height){
@@ -175,9 +173,9 @@ public class ImageDisplay {
         return rbuf;
     }
 	
-	public BufferedImage[] frames(double zoomValue, double rotationValue, int fps, double prevRotateVal, double prevZoomVal){
-		double zoomCalcFactor = (zoomValue-prevZoomVal)/fps;
-		double rotataionCalcFactor = (rotationValue-prevRotateVal)/fps;
+	public BufferedImage[] frames(float zoomValue, float rotationValue, int fps, float prevRotateVal, float prevZoomVal){
+		float zoomCalcFactor = (zoomValue-prevZoomVal)/fps;
+		float rotataionCalcFactor = (rotationValue-prevRotateVal)/fps;
 		BufferedImage[] framesArray = new BufferedImage[fps];
 		int k = 0;
 		for(int i=0; i<fps; i++){
@@ -194,16 +192,16 @@ public class ImageDisplay {
 		
 		ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-		for (int i = 0; i < 5; i++) {
+		for (int i = 0; i < 7; i++) {
 			prevZoomVal = zoomFactor;
 			prevRotateVal = rotationFactor;
 			counter++;
 			zoomFactor = 1 + (counter * zoomF);
 			rotationFactor += rotation;
-			double arg1Zoom = zoomFactor;
-			double arg2Rotate = rotationFactor;
-			double arg4PreR = prevRotateVal;
-			double arg5PreZ = prevZoomVal;
+			float arg1Zoom = zoomFactor;
+			float arg2Rotate = rotationFactor;
+			float arg4PreR = prevRotateVal;
+			float arg5PreZ = prevZoomVal;
 			int c = counter;
 			executor.execute(new Runnable() {
 				@Override
@@ -236,8 +234,8 @@ public class ImageDisplay {
 		frame = new JFrame();
 		GridBagLayout gLayout = new GridBagLayout();
 		frame.getContentPane().setLayout(gLayout);
-		zoomF = Double.parseDouble(args[1])-1;
-		rotation = Double.parseDouble(args[2]);
+		zoomF = Float.parseFloat(args[1])-1;
+		rotation = Float.parseFloat(args[2]);
 		fps = Integer.parseInt(args[3]);
 
 		BufferedImage im1 = zoom(zoomFactor, rotationFactor);
@@ -252,7 +250,6 @@ public class ImageDisplay {
 				
 				ResultWithIndex result = (ResultWithIndex) franQueue.stream().filter(r -> ((ResultWithIndex) r).index == timerCounter).findFirst().orElse(null);
 				framesResult = result.result;
-				
 				
 				// Display each frame separately with a delay
 				for (int i = 0; i < fps; i++) {
@@ -272,6 +269,10 @@ public class ImageDisplay {
 		});
 		
 		timer.start();
+		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
+        executor.scheduleAtFixedRate(() -> {
+                MultiTFrames();
+        }, 0, 5, TimeUnit.SECONDS);
 
 		GridBagConstraints c = new GridBagConstraints();
 		c.fill = GridBagConstraints.HORIZONTAL;
