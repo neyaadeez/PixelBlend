@@ -134,6 +134,7 @@ public class ImageDisplay {
 			}
 			for (int y = 0; y < height; y++) {
 				for (int x = 0; x < width; x++) {
+					rbuf[indRbuff].setRGB(x, y, 0);
 					float radians = (float) Math.toRadians(angle);
 					int rotatedX = (int) (Math.cos(radians) * (x - width / 2) - Math.sin(radians) * (y - height / 2)
 							+ width / 2);
