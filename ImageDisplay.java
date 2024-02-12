@@ -36,8 +36,8 @@ public class ImageDisplay {
   	// different dimensions. 
 	int width = 512;
 	int height = 512;
-	int[][][] temp = new int[width][height][3];
-		BufferedImage rbuf = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+	BufferedImage[] rbuf = new BufferedImage[nThreads];
+
 
 	// Helper class to store result with index
     static class ResultWithIndex {
@@ -89,7 +89,20 @@ public class ImageDisplay {
 		}
 	}
 
-    public BufferedImage zoom(float zoomFactor, float angle){
+	public void arrToRGB(int[][][] arr, BufferedImage img){
+		for(int y=0; y<height; y++){
+			for(int x=0; x<width; x++){
+				int r = arr[x][y][0];
+				int g = arr[x][y][1];
+				int b = arr[x][y][2];
+				int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
+				img.setRGB(x, y, pixVal);
+			}
+		}
+	}
+    public int[][][] zoom(float zoomFactor, float angle, int processId){
+		int[][][] temp = new int[width][height][3];
+		int[][][] resultArr = new int[width][height][3];
         int newHeight = height;
 		int newWidth = width;
 		if(zoomFactor < 1){
@@ -139,11 +152,12 @@ public class ImageDisplay {
                 	int rotatedX = (int) (Math.cos(radians) * (x - width / 2) - Math.sin(radians) * (y - height / 2) + width / 2);
                 	int rotatedY = (int) (Math.sin(radians) * (x - width / 2) + Math.cos(radians) * (y - height / 2) + height / 2);
 					if (rotatedX >= 0 && rotatedX < width && rotatedY >= 0 && rotatedY < height){
-						int r = temp[rotatedX][rotatedY][0];
-						int g = temp[rotatedX][rotatedY][1];
-						int b = temp[rotatedX][rotatedY][2];
-						int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
-						rbuf.setRGB(x, y, pixVal);
+						resultArr[x][y][0] = temp[rotatedX][rotatedY][0];
+						resultArr[x][y][1] = temp[rotatedX][rotatedY][1];
+						resultArr[x][y][2] = temp[rotatedX][rotatedY][2];
+						// int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
+						
+						// rbuf[processId].setRGB(x, y, pixVal);
 					}
 				}
         	}
@@ -157,31 +171,32 @@ public class ImageDisplay {
                 	int rotatedX = (int) (Math.cos(radians) * (originX - width / 2) - Math.sin(radians) * (originY - height / 2) + width / 2);
                 	int rotatedY = (int) (Math.sin(radians) * (originX - width / 2) + Math.cos(radians) * (originY - height / 2) + height / 2);
 					if (rotatedX >= 0 && rotatedX < width && rotatedY >= 0 && rotatedY < height){
-						int r = imgOne[rotatedX][rotatedY][0];
-						int g = imgOne[rotatedX][rotatedY][1];
-						int b = imgOne[rotatedX][rotatedY][2];
-						int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
-						rbuf.setRGB(x, y, pixVal);
+						resultArr[x][y][0] = imgOne[rotatedX][rotatedY][0];
+						resultArr[x][y][1] = imgOne[rotatedX][rotatedY][1];
+						resultArr[x][y][2] = imgOne[rotatedX][rotatedY][2];
+						// int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
+						// rbuf[processId].setRGB(x, y, pixVal);
 					}
 				}
         	}
 		}
 
-        return rbuf;
+        return resultArr;
     }
 	
-	public BufferedImage[] frames(float zoomValue, float rotationValue, int fps, float prevRotateVal, float prevZoomVal){
+	public BufferedImage[] frames(float zoomValue, float rotationValue, int fps, float prevRotateVal, float prevZoomVal, int processId){
 		float zoomCalcFactor = (zoomValue-prevZoomVal)/fps;
 		float rotataionCalcFactor = (rotationValue-prevRotateVal)/fps;
 		BufferedImage[] framesArray = new BufferedImage[fps];
+		int[][][] temp1 = new int[width][height][3];
 		int k = 0;
 		for(int i=0; i<fps; i++){
 			// zoomSequence[i] = zoomCalcFactor*k;
 			// rotationSequence[i] = rotataionCalcFactor*k;
 			// k+=1;
-			framesArray[i] = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-			framesArray[i] = zoom(prevZoomVal+zoomCalcFactor*k, ((rotataionCalcFactor*k)+prevRotateVal));
-			
+			framesArray[i] = new BufferedImage(height, width, BufferedImage.TYPE_INT_RGB);
+			temp1 = zoom(prevZoomVal+zoomCalcFactor*k, ((rotataionCalcFactor*k)+prevRotateVal), processId);
+			arrToRGB(temp1, framesArray[i]);
 			k+=1;
 		}
 		return framesArray;
@@ -202,14 +217,14 @@ public class ImageDisplay {
 			float arg4PreR = prevRotateVal;
 			float arg5PreZ = prevZoomVal;
 			int c = counter;
+			final int index = i;
 			executor.execute(new Runnable() {
 				@Override
 				public void run() {
 					System.out.println("PrevZ: "+arg5PreZ+" PrevR: "+arg4PreR+" Counter: "+c+" ZoomFactor: "+arg1Zoom+" rotationFactor: "+arg2Rotate);
-					BufferedImage[] frame = frames(arg1Zoom, arg2Rotate, fps, arg4PreR, arg5PreZ);
+					BufferedImage[] frame = frames(arg1Zoom, arg2Rotate, fps, arg4PreR, arg5PreZ, index);
 					try{
 						franQueue.put(new ResultWithIndex(c, frame));
-						frame = null;
 					}
 					catch(InterruptedException e){
 						e.printStackTrace();
@@ -237,9 +252,14 @@ public class ImageDisplay {
 		zoomF = Float.parseFloat(args[1])-1;
 		rotation = Float.parseFloat(args[2]);
 		fps = Integer.parseInt(args[3]);
+		for(int i=0; i<nThreads; i++){
+			rbuf[i] = new BufferedImage(height, width, BufferedImage.TYPE_INT_RGB);
+		}
 
-		BufferedImage im1 = zoom(zoomFactor, rotationFactor);
-		lbIm1 = new JLabel(new ImageIcon(im1));
+		int[][][] im1 = zoom(zoomFactor, rotationFactor, 0);
+		BufferedImage imgBuff = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		arrToRGB(im1, imgBuff);
+		lbIm1 = new JLabel(new ImageIcon(imgBuff));
 		
 		Timer timer = new Timer(1000, new ActionListener() {
 			@Override
