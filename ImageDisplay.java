@@ -272,14 +272,7 @@ public class ImageDisplay {
 		Timer timer = new Timer(1000, new ActionListener() {
 			@Override
 			public void actionPerformed(ActionEvent e) {
-				//framesResult = frames(zoomFactor, rotationFactor, fps);
-
 				timerCounter+=1;
-				
-				// ResultWithIndex result = (ResultWithIndex) franQueue.stream().filter(r -> ((ResultWithIndex) r).index == timerCounter).findFirst().orElse(null);
-				// framesResult = result.result;
-				
-				// Display each frame separately with a delay
 				for (int i = 0; i < fps; i++) {
 					timerCounter+=1;
 					ResultWithIndex result = (ResultWithIndex) franQueue.stream().filter(r -> ((ResultWithIndex) r).index == timerCounter).findFirst().orElse(null);
