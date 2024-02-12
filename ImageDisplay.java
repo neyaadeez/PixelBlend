@@ -36,7 +36,8 @@ public class ImageDisplay {
 	// different dimensions.
 	int width = 512;
 	int height = 512;
-	int Norbuf = 50;
+	int Norbuf = 200;
+	int gHeapC = 0;
 	BufferedImage[] rbuf = new BufferedImage[Norbuf];
 
 	// Helper class to store result with index
@@ -170,6 +171,43 @@ public class ImageDisplay {
 		return rbuf[indRbuff];
 	}
 
+
+	public void freeHeapMemHelper(BufferedImage r){
+		for(int y=0; y<height; y++){
+			for(int x=0; x<width; x++){
+				r.setRGB(x, y, 0);
+			}
+		}
+	}
+
+	public void freeHeapMem(int HeapCycle){
+		ExecutorService executor = Executors.newFixedThreadPool(1);
+		if((HeapCycle%2)==0){
+			for(int i=0; i<(Norbuf/2); i++){
+				final int index = i;
+				executor.execute(new Runnable() {
+						@Override
+						public void run() {
+							freeHeapMemHelper(rbuf[index]);
+						}
+					});
+				}
+				executor.shutdown();
+			}
+		else
+		{
+			for(int i=(Norbuf/2); i<Norbuf; i++){
+				final int index = i;
+				executor.execute(new Runnable() {
+						@Override
+						public void run() {
+							freeHeapMemHelper(rbuf[index]);
+						}
+					});
+				}
+				executor.shutdown();
+		}
+	}
 	public void frames() {
 		ExecutorService executor = Executors.newFixedThreadPool(nThreads);
 		prevZoomVal = zoomFactor;
@@ -198,9 +236,12 @@ public class ImageDisplay {
 					// System.out.println("PrevZ: "+prevZoomVal+" PrevR: "+prevRotateVal+" Counter:
 					// "+kk+" ZoomFactor: "+zoomFactor+" rotationFactor: "+rotationFactor);
 					// System.out.println(counter);
-					img = zoom(prevZoomVal + zoomCalcFactor * kk, ((rotataionCalcFactor * kk) + prevRotateVal),
-							(gC % Norbuf));
+					img = zoom(prevZoomVal + zoomCalcFactor * kk, ((rotataionCalcFactor * kk) + prevRotateVal), (gC % Norbuf));
 					System.out.println(gC);
+					if((gC%(Norbuf/2)) == 0){
+						freeHeapMem(gHeapC);
+						gHeapC+=1;
+					}
 
 					try {
 						franQueue.put(new ResultWithIndex(gC, img));
