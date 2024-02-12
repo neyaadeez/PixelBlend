@@ -36,7 +36,7 @@ public class ImageDisplay {
 	// different dimensions.
 	int width = 512;
 	int height = 512;
-	int Norbuf = 200;
+	int Norbuf = 500;
 	int gHeapC = 0;
 	BufferedImage[] rbuf = new BufferedImage[Norbuf];
 
@@ -163,6 +163,8 @@ public class ImageDisplay {
 						int b = imgOne[rotatedX][rotatedY][2];
 						int pixVal = (255 << 24) | (r << 16) | (g << 8) | b;
 						rbuf[indRbuff].setRGB(x, y, pixVal);
+					}else{
+						rbuf[indRbuff].setRGB(x, y, 0);
 					}
 				}
 			}
@@ -175,37 +177,20 @@ public class ImageDisplay {
 	public void freeHeapMemHelper(BufferedImage r){
 		for(int y=0; y<height; y++){
 			for(int x=0; x<width; x++){
-				r.setRGB(x, y, 0);
+				//r.setRGB(x, y, 0);
 			}
 		}
 	}
 
 	public void freeHeapMem(int HeapCycle){
-		ExecutorService executor = Executors.newFixedThreadPool(1);
 		if((HeapCycle%2)==0){
-			for(int i=0; i<(Norbuf/2); i++){
-				final int index = i;
-				executor.execute(new Runnable() {
-						@Override
-						public void run() {
-							freeHeapMemHelper(rbuf[index]);
-						}
-					});
-				}
-				executor.shutdown();
+			for(int i=0; i<(Norbuf/2-100); i++){
+				freeHeapMemHelper(rbuf[i]);
 			}
-		else
-		{
-			for(int i=(Norbuf/2); i<Norbuf; i++){
-				final int index = i;
-				executor.execute(new Runnable() {
-						@Override
-						public void run() {
-							freeHeapMemHelper(rbuf[index]);
-						}
-					});
-				}
-				executor.shutdown();
+		}else{
+			for(int i=(Norbuf/2); i<Norbuf-100; i++){
+				freeHeapMemHelper(rbuf[i]);
+			}
 		}
 	}
 	public void frames() {
@@ -236,12 +221,13 @@ public class ImageDisplay {
 					// System.out.println("PrevZ: "+prevZoomVal+" PrevR: "+prevRotateVal+" Counter:
 					// "+kk+" ZoomFactor: "+zoomFactor+" rotationFactor: "+rotationFactor);
 					// System.out.println(counter);
-					img = zoom(prevZoomVal + zoomCalcFactor * kk, ((rotataionCalcFactor * kk) + prevRotateVal), (gC % Norbuf));
-					System.out.println(gC);
 					if((gC%(Norbuf/2)) == 0){
+						System.out.println("!!!GHEap: "+gC+"   Clearing: "+gHeapC+"   gc mod nor: "+(gC % Norbuf));
 						freeHeapMem(gHeapC);
 						gHeapC+=1;
 					}
+					img = zoom(prevZoomVal + zoomCalcFactor * kk, ((rotataionCalcFactor * kk) + prevRotateVal), (gC % Norbuf));
+					System.out.println(gC);
 
 					try {
 						franQueue.put(new ResultWithIndex(gC, img));
