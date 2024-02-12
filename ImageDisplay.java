@@ -2,6 +2,7 @@ import java.awt.*;
 import java.awt.image.*;
 import java.io.*;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -36,9 +37,9 @@ public class ImageDisplay {
 	// different dimensions.
 	int width = 512;
 	int height = 512;
-	int Norbuf = 500;
+	int Norbuf;
 	int gHeapC = 0;
-	BufferedImage[] rbuf = new BufferedImage[Norbuf];
+	BufferedImage[] rbuf;
 
 	// Helper class to store result with index
 	static class ResultWithIndex {
@@ -174,25 +175,25 @@ public class ImageDisplay {
 	}
 
 
-	public void freeHeapMemHelper(BufferedImage r){
-		for(int y=0; y<height; y++){
-			for(int x=0; x<width; x++){
-				//r.setRGB(x, y, 0);
-			}
-		}
-	}
+	// public void freeHeapMemHelper(BufferedImage r){
+	// 	for(int y=0; y<height; y++){
+	// 		for(int x=0; x<width; x++){
+	// 			//r.setRGB(x, y, 0);
+	// 		}
+	// 	}
+	// }
 
-	public void freeHeapMem(int HeapCycle){
-		if((HeapCycle%2)==0){
-			for(int i=0; i<(Norbuf/2-100); i++){
-				freeHeapMemHelper(rbuf[i]);
-			}
-		}else{
-			for(int i=(Norbuf/2); i<Norbuf-100; i++){
-				freeHeapMemHelper(rbuf[i]);
-			}
-		}
-	}
+	// public void freeHeapMem(int HeapCycle){
+	// 	if((HeapCycle%2)==0){
+	// 		for(int i=0; i<(Norbuf/2-100); i++){
+	// 			freeHeapMemHelper(rbuf[i]);
+	// 		}
+	// 	}else{
+	// 		for(int i=(Norbuf/2); i<Norbuf-100; i++){
+	// 			freeHeapMemHelper(rbuf[i]);
+	// 		}
+	// 	}
+	// }
 	public void frames() {
 		ExecutorService executor = Executors.newFixedThreadPool(nThreads);
 		prevZoomVal = zoomFactor;
@@ -221,11 +222,6 @@ public class ImageDisplay {
 					// System.out.println("PrevZ: "+prevZoomVal+" PrevR: "+prevRotateVal+" Counter:
 					// "+kk+" ZoomFactor: "+zoomFactor+" rotationFactor: "+rotationFactor);
 					// System.out.println(counter);
-					if((gC%(Norbuf/2)) == 0){
-						System.out.println("!!!GHEap: "+gC+"   Clearing: "+gHeapC+"   gc mod nor: "+(gC % Norbuf));
-						freeHeapMem(gHeapC);
-						gHeapC+=1;
-					}
 					img = zoom(prevZoomVal + zoomCalcFactor * kk, ((rotataionCalcFactor * kk) + prevRotateVal), (gC % Norbuf));
 					System.out.println(gC);
 
@@ -289,11 +285,6 @@ public class ImageDisplay {
 		// Read in the specified image
 		readImageRGB(width, height, args[0]);
 
-		// for saving heap space
-		for (int i = 0; i < Norbuf; i++) {
-			rbuf[i] = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
-		}
-
 		// Use label to display the image
 		frame = new JFrame();
 		GridBagLayout gLayout = new GridBagLayout();
@@ -301,7 +292,13 @@ public class ImageDisplay {
 		zoomF = Float.parseFloat(args[1]) - 1;
 		rotation = Float.parseFloat(args[2]);
 		fps = Integer.parseInt(args[3]);
-		BufferedImage im1 = zoom(zoomFactor, rotationFactor, Norbuf-1);
+		Norbuf = fps*20;
+		rbuf = new BufferedImage[Norbuf];
+		// for saving heap space
+		for (int i = 0; i < Norbuf; i++) {
+			rbuf[i] = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
+		}
+		BufferedImage im1 = zoom(zoomFactor, rotationFactor, 0);
 		lbIm1 = new JLabel(new ImageIcon(im1));
 		frames();
 		Timer timer = new Timer(1000, new ActionListener() {
@@ -328,11 +325,18 @@ public class ImageDisplay {
 
 		ScheduledExecutorService executor = Executors.newScheduledThreadPool(1);
 		executor.scheduleAtFixedRate(() -> {
-			// MultiTFrames();
+			if ((frameCounter%Norbuf) == 0) {
+				    final CountDownLatch latch = new CountDownLatch(1);
+					final int x = (int)((fps*10) / 1.2)*10;
+            try {
+                latch.await(x, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        	}
+
 			frames();
-			frames();
-		}, 0, 1, TimeUnit.SECONDS);
-		// MultiTFrames();
+		}, 0, 700, TimeUnit.MILLISECONDS);
 		timer.start();
 
 		GridBagConstraints c = new GridBagConstraints();
